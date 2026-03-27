@@ -15,6 +15,7 @@ namespace JordiXIII.WeightHUD
     {
         public ConfigEntry<bool> EnableHud { get; private set; }
         public ConfigEntry<bool> ShowInMainMenu { get; private set; }
+        public ConfigEntry<bool> MinimalHud { get; private set; }
         public ConfigEntry<KeyboardShortcut> ToggleHudShortcut { get; private set; }
         public ConfigEntry<int> RefreshIntervalMs { get; private set; }
 
@@ -31,10 +32,12 @@ namespace JordiXIII.WeightHUD
         public ConfigEntry<Color> SecondaryTextColor { get; private set; }
         public ConfigEntry<Color> TrackColor { get; private set; }
         public ConfigEntry<Color> SafeWeightColor { get; private set; }
-        public ConfigEntry<Color> NormalWeightColor { get; private set; }
         public ConfigEntry<Color> OverweightColor { get; private set; }
-        public ConfigEntry<Color> SlowWalkColor { get; private set; }
+        public ConfigEntry<Color> CriticalWeightColor { get; private set; }
         public ConfigEntry<Color> MaxWeightColor { get; private set; }
+        public ConfigEntry<Color> EquipmentColor { get; private set; }
+        public ConfigEntry<Color> WeaponsColor { get; private set; }
+        public ConfigEntry<Color> BackpackColor { get; private set; }
         public ConfigEntry<Color> PmcBadgeColor { get; private set; }
         public ConfigEntry<Color> ScavBadgeColor { get; private set; }
 
@@ -53,6 +56,12 @@ namespace JordiXIII.WeightHUD
                     "Show In Main Menu",
                     true,
                     "Draws the HUD for the PMC profile while in the main menu."
+                ),
+                MinimalHud = config.Bind(
+                    "General",
+                    "Minimal HUD",
+                    false,
+                    "Shows only the circular bar with the current weight in the center."
                 ),
                 ToggleHudShortcut = config.Bind(
                     "General",
@@ -150,29 +159,41 @@ namespace JordiXIII.WeightHUD
                     new Color(0.62f, 0.65f, 0.69f, 1f),
                     "Color used while below the first threshold."
                 ),
-                NormalWeightColor = config.Bind(
-                    "Visuals",
-                    "First Threshold Color",
-                    new Color(0.95f, 0.88f, 0.58f, 1f),
-                    "Color used for the first threshold marker."
-                ),
                 OverweightColor = config.Bind(
                     "Visuals",
                     "Overweight Color",
-                    new Color(0.92f, 0.58f, 0.24f, 1f),
-                    "Color used between overweight and slow walk."
+                    new Color(0.95f, 0.88f, 0.58f, 1f),
+                    "Color used for the overweight threshold."
                 ),
-                SlowWalkColor = config.Bind(
+                CriticalWeightColor = config.Bind(
                     "Visuals",
-                    "Slow Walk Color",
-                    new Color(0.87f, 0.33f, 0.16f, 1f),
-                    "Color used between slow walk and max carry."
+                    "Critically Overweight Color",
+                    new Color(0.92f, 0.58f, 0.24f, 1f),
+                    "Color used between overweight and max weight."
                 ),
                 MaxWeightColor = config.Bind(
                     "Visuals",
-                    "Maximum Weight Color",
+                    "Max Weight Color",
                     new Color(0.66f, 0.09f, 0.12f, 1f),
-                    "Color used when at or above the maximum carry threshold."
+                    "Color used when at or above max weight."
+                ),
+                EquipmentColor = config.Bind(
+                    "Visuals",
+                    "Equipment Color",
+                    new Color(0.84f, 0.86f, 0.89f, 1f),
+                    "Color used for equipment weight."
+                ),
+                WeaponsColor = config.Bind(
+                    "Visuals",
+                    "Weapons Color",
+                    new Color(0.96f, 0.74f, 0.53f, 1f),
+                    "Color used for weapons weight."
+                ),
+                BackpackColor = config.Bind(
+                    "Visuals",
+                    "Backpack Color",
+                    new Color(0.59f, 0.78f, 0.95f, 1f),
+                    "Color used for backpack weight."
                 ),
                 PmcBadgeColor = config.Bind(
                     "Visuals",

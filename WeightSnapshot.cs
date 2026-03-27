@@ -18,10 +18,10 @@ namespace JordiXIII.WeightHUD
 
     internal enum WeightState
     {
-        Normal,
+        Safe,
         Overweight,
-        SlowWalk,
-        MaxCarry
+        CriticallyOverweight,
+        MaxWeight
     }
 
     internal sealed class WeightRuntimeContext
@@ -56,8 +56,8 @@ namespace JordiXIII.WeightHUD
         public float BackpackWeight { get; set; }
 
         public float OverweightThreshold { get; set; }
-        public float SlowWalkThreshold { get; set; }
-        public float MaxCarryThreshold { get; set; }
+        public float CriticalOverweightThreshold { get; set; }
+        public float MaxWeightThreshold { get; set; }
 
         public WeightState State { get; set; }
         public string RoleLabel { get; set; }

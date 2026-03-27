@@ -16,8 +16,7 @@ namespace JordiXIII.WeightHUD
         private static readonly FieldInfo BoolWrapperValueField = AccessTools.Field(SkillManagerStrengthBuffEliteField.FieldType, "Value");
 
         private static readonly FieldInfo PlayerPhysicalField = AccessTools.Field(typeof(Player), "Physical");
-        private static readonly PropertyInfo PhysicalOverweightProperty = AccessTools.Property(PlayerPhysicalField.FieldType, "Overweight");
-        private static readonly PropertyInfo PhysicalWalkOverweightProperty = AccessTools.Property(PlayerPhysicalField.FieldType, "WalkOverweight");
+        private static readonly PropertyInfo PhysicalBaseOverweightLimitsProperty = AccessTools.Property(PlayerPhysicalField.FieldType, "BaseOverweightLimits");
         private static readonly PropertyInfo PhysicalWalkOverweightLimitsProperty = AccessTools.Property(PlayerPhysicalField.FieldType, "WalkOverweightLimits");
 
         private static readonly EquipmentSlot[] WeaponSlots =
@@ -58,9 +57,9 @@ namespace JordiXIII.WeightHUD
                 WeaponWeight = breakdown.WeaponWeight,
                 BackpackWeight = breakdown.BackpackWeight,
                 OverweightThreshold = thresholds.Overweight,
-                SlowWalkThreshold = thresholds.SlowWalk,
-                MaxCarryThreshold = thresholds.MaxCarry,
-                State = ResolveState(totalWeight, thresholds.Overweight, thresholds.SlowWalk, thresholds.MaxCarry),
+                CriticalOverweightThreshold = thresholds.CriticalOverweight,
+                MaxWeightThreshold = thresholds.MaxWeight,
+                State = ResolveState(totalWeight, thresholds.Overweight, thresholds.CriticalOverweight, thresholds.MaxWeight),
                 RoleLabel = context.Role == HudPlayerRole.Scav ? "SCAV" : "PMC",
                 ContextLabel = string.Empty
             };
@@ -131,9 +130,9 @@ namespace JordiXIII.WeightHUD
             var modifier = Mathf.Max(-0.95f, context.Skills.CarryingWeightRelativeModifier);
             return new ThresholdSet
             {
-                Overweight = _globals.BaseOverweightThreshold * (1f + modifier),
-                SlowWalk = _globals.SlowWalkThreshold * (1f + modifier),
-                MaxCarry = _globals.MaxCarryThreshold * (1f + modifier)
+                Overweight = _globals.OverweightThreshold * (1f + modifier),
+                CriticalOverweight = _globals.CriticalOverweightThreshold * (1f + modifier),
+                MaxWeight = _globals.MaxWeightThreshold * (1f + modifier)
             };
         }
 
@@ -149,21 +148,18 @@ namespace JordiXIII.WeightHUD
 
             try
             {
-                var overweight = (float)(PhysicalOverweightProperty?.GetValue(physical) ?? 0f);
-                var slowWalk = (float)(PhysicalWalkOverweightProperty?.GetValue(physical) ?? 0f);
+                var baseLimits = (Vector2)(PhysicalBaseOverweightLimitsProperty?.GetValue(physical) ?? Vector2.zero);
                 var walkLimits = (Vector2)(PhysicalWalkOverweightLimitsProperty?.GetValue(physical) ?? Vector2.zero);
-                var maxCarry = walkLimits.y > 0f ? walkLimits.y : slowWalk;
-
-                if (overweight <= 0f || slowWalk <= 0f || maxCarry <= 0f)
+                if (baseLimits.x <= 0f || baseLimits.y <= 0f || walkLimits.y <= 0f)
                 {
                     return false;
                 }
 
                 thresholds = new ThresholdSet
                 {
-                    Overweight = overweight,
-                    SlowWalk = slowWalk,
-                    MaxCarry = maxCarry
+                    Overweight = baseLimits.x,
+                    CriticalOverweight = Mathf.Max(baseLimits.y, baseLimits.x),
+                    MaxWeight = Mathf.Max(walkLimits.y, baseLimits.y)
                 };
                 return true;
             }
@@ -173,16 +169,16 @@ namespace JordiXIII.WeightHUD
             }
         }
 
-        private static WeightState ResolveState(float currentWeight, float overweight, float slowWalk, float maxCarry)
+        private static WeightState ResolveState(float currentWeight, float overweight, float criticalOverweight, float maxWeight)
         {
-            if (currentWeight >= maxCarry)
+            if (currentWeight >= maxWeight)
             {
-                return WeightState.MaxCarry;
+                return WeightState.MaxWeight;
             }
 
-            if (currentWeight >= slowWalk)
+            if (currentWeight >= criticalOverweight)
             {
-                return WeightState.SlowWalk;
+                return WeightState.CriticallyOverweight;
             }
 
             if (currentWeight >= overweight)
@@ -190,7 +186,7 @@ namespace JordiXIII.WeightHUD
                 return WeightState.Overweight;
             }
 
-            return WeightState.Normal;
+            return WeightState.Safe;
         }
 
         private struct WeightBreakdown
@@ -203,8 +199,8 @@ namespace JordiXIII.WeightHUD
         private struct ThresholdSet
         {
             public float Overweight;
-            public float SlowWalk;
-            public float MaxCarry;
+            public float CriticalOverweight;
+            public float MaxWeight;
         }
     }
 }

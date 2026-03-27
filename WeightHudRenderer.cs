@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace JordiXIII.WeightHUD
@@ -11,6 +12,7 @@ namespace JordiXIII.WeightHUD
         private readonly GameFontResolver _fontResolver;
 
         private Texture2D _pixel;
+        private Material _vectorMaterial;
         private Font _cachedFont;
         private float _cachedScale = -1f;
         private GUIStyle _titleStyle;
@@ -37,18 +39,36 @@ namespace JordiXIII.WeightHUD
             EnsureResources();
 
             var scale = _config.Scale.Value;
-            var layout = BuildLayout(scale);
+            var layout = _config.MinimalHud.Value ? BuildMinimalLayout(scale) : BuildFullLayout(scale);
             layout.PanelRect.x = Mathf.Clamp(_config.AnchorX.Value, 0f, Mathf.Max(0f, Screen.width - layout.PanelRect.width - 8f));
             layout.PanelRect.y = Mathf.Clamp(_config.AnchorY.Value, 0f, Mathf.Max(0f, Screen.height - layout.PanelRect.height - 8f));
             ApplyAnchoring(ref layout);
 
-            DrawPanel(layout.PanelRect, layout, scale);
-            DrawHeader(layout.HeaderRect, layout.BadgeRect, snapshot, scale);
-            DrawGauge(layout.GaugeRect, snapshot, scale);
-            DrawBreakdownRows(layout.BreakdownRect, snapshot, scale);
+            if (!_config.MinimalHud.Value)
+            {
+                DrawPanel(layout.PanelRect, layout, scale);
+                DrawHeader(layout.HeaderRect, layout.BadgeRect, snapshot, scale);
+                DrawBreakdownRows(layout.BreakdownRect, snapshot, scale);
+            }
+
+            DrawGauge(layout.GaugeRect, snapshot, scale, _config.MinimalHud.Value);
         }
 
-        private Layout BuildLayout(float scale)
+        private Layout BuildMinimalLayout(float scale)
+        {
+            var padding = 8f * scale;
+            var gaugeSize = 142f * scale;
+            var panelRect = new Rect(0f, 0f, gaugeSize + (padding * 2f), gaugeSize + (padding * 2f));
+
+            return new Layout
+            {
+                Placement = BreakdownPlacement.Right,
+                PanelRect = panelRect,
+                GaugeRect = new Rect(padding, padding, gaugeSize, gaugeSize)
+            };
+        }
+
+        private Layout BuildFullLayout(float scale)
         {
             var padding = 12f * scale;
             var sectionGap = 10f * scale;
@@ -70,8 +90,7 @@ namespace JordiXIII.WeightHUD
                 case BreakdownPlacement.Right:
                     panelSize = new Vector2((padding * 2f) + gaugeSize + sectionGap + breakdownWidth, (padding * 2f) + headerHeight + headerGap + Mathf.Max(gaugeSize, breakdownHeight));
                     break;
-                case BreakdownPlacement.Top:
-                case BreakdownPlacement.Bottom:
+                default:
                     panelSize = new Vector2((padding * 2f) + Mathf.Max(gaugeSize, breakdownWidth), (padding * 2f) + headerHeight + headerGap + gaugeSize + sectionGap + breakdownHeight);
                     break;
             }
@@ -132,6 +151,19 @@ namespace JordiXIII.WeightHUD
                 _pixel.Apply();
             }
 
+            if (_vectorMaterial == null)
+            {
+                var shader = Shader.Find("Hidden/Internal-Colored");
+                _vectorMaterial = new Material(shader)
+                {
+                    hideFlags = HideFlags.HideAndDontSave
+                };
+                _vectorMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                _vectorMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                _vectorMaterial.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
+                _vectorMaterial.SetInt("_ZWrite", 0);
+            }
+
             var font = _fontResolver.Resolve(_config.PreferredFontName.Value);
             if (_cachedFont != font || !Mathf.Approximately(_cachedScale, _config.Scale.Value))
             {
@@ -167,10 +199,6 @@ namespace JordiXIII.WeightHUD
 
         private void DrawPanel(Rect panelRect, Layout layout, float scale)
         {
-            var shadowRect = panelRect;
-            shadowRect.position += new Vector2(4f, 5f) * scale;
-
-            DrawRect(shadowRect, new Color(0f, 0f, 0f, 0.26f));
             DrawRect(panelRect, _config.PanelBackgroundColor.Value);
             DrawRect(new Rect(panelRect.x, panelRect.y, panelRect.width, 2f * scale), _config.PanelAccentColor.Value);
             DrawRect(new Rect(panelRect.x, panelRect.y + panelRect.height - 1f, panelRect.width, 1f), new Color(1f, 1f, 1f, 0.06f));
@@ -205,33 +233,38 @@ namespace JordiXIII.WeightHUD
             DrawShadowedLabel(badgeRect, snapshot.RoleLabel, _badgeStyle, Color.Lerp(Color.white, badgeColor, 0.2f), scale);
         }
 
-        private void DrawGauge(Rect rect, WeightSnapshot snapshot, float scale)
+        private void DrawGauge(Rect rect, WeightSnapshot snapshot, float scale, bool minimalHud)
         {
             var center = rect.center;
-            var radius = rect.width * 0.33f;
-            var thickness = 10f * scale;
+            var radius = rect.width * 0.34f;
+            var thickness = minimalHud ? 12f * scale : 10f * scale;
+            var maxWeight = Mathf.Max(1f, snapshot.MaxWeightThreshold);
 
-            DrawArc(center, radius, thickness, GaugeStartAngle, GaugeSweepAngle, _config.TrackColor.Value);
-
-            var maxCarry = Mathf.Max(1f, snapshot.MaxCarryThreshold);
-            DrawThresholdArc(center, radius, thickness, snapshot.CurrentWeight, maxCarry, 0f, snapshot.OverweightThreshold, _config.SafeWeightColor.Value);
-            DrawThresholdArc(center, radius, thickness, snapshot.CurrentWeight, maxCarry, snapshot.OverweightThreshold, snapshot.SlowWalkThreshold, _config.OverweightColor.Value);
-            DrawThresholdArc(center, radius, thickness, snapshot.CurrentWeight, maxCarry, snapshot.SlowWalkThreshold, snapshot.MaxCarryThreshold, _config.SlowWalkColor.Value);
-
-            if (snapshot.CurrentWeight >= snapshot.MaxCarryThreshold)
+            if (minimalHud)
             {
-                DrawArc(center, radius + (6f * scale), 3f * scale, GaugeStartAngle, GaugeSweepAngle, new Color(_config.MaxWeightColor.Value.r, _config.MaxWeightColor.Value.g, _config.MaxWeightColor.Value.b, 0.35f));
+                DrawRing(center, radius + (4f * scale), 2f * scale, GaugeStartAngle, GaugeSweepAngle, new Color(0f, 0f, 0f, 0.45f));
+                DrawRing(center, radius - thickness - (3f * scale), 2f * scale, GaugeStartAngle, GaugeSweepAngle, new Color(1f, 1f, 1f, 0.15f));
             }
 
-            DrawThresholdTick(center, radius, thickness, maxCarry, snapshot.OverweightThreshold, _config.NormalWeightColor.Value, 11f * scale, 2f * scale);
-            DrawThresholdTick(center, radius, thickness, maxCarry, snapshot.SlowWalkThreshold, _config.OverweightColor.Value, 13f * scale, 2f * scale);
-            DrawThresholdTick(center, radius, thickness, maxCarry, snapshot.MaxCarryThreshold, _config.MaxWeightColor.Value, 16f * scale, 3f * scale);
+            DrawRing(center, radius, thickness, GaugeStartAngle, GaugeSweepAngle, _config.TrackColor.Value);
+            DrawThresholdBand(center, radius, thickness, snapshot.CurrentWeight, maxWeight, 0f, snapshot.OverweightThreshold, _config.SafeWeightColor.Value);
+            DrawThresholdBand(center, radius, thickness, snapshot.CurrentWeight, maxWeight, snapshot.OverweightThreshold, snapshot.CriticalOverweightThreshold, _config.OverweightColor.Value);
+            DrawThresholdBand(center, radius, thickness, snapshot.CurrentWeight, maxWeight, snapshot.CriticalOverweightThreshold, snapshot.MaxWeightThreshold, _config.CriticalWeightColor.Value);
 
-            if (_config.ShowGaugeThresholdLabels.Value)
+            if (snapshot.CurrentWeight >= snapshot.MaxWeightThreshold)
             {
-                DrawThresholdLabel(center, radius, thickness, maxCarry, snapshot.OverweightThreshold, _config.NormalWeightColor.Value, scale);
-                DrawThresholdLabel(center, radius, thickness, maxCarry, snapshot.SlowWalkThreshold, _config.OverweightColor.Value, scale);
-                DrawThresholdLabel(center, radius, thickness, maxCarry, snapshot.MaxCarryThreshold, _config.MaxWeightColor.Value, scale);
+                DrawRing(center, radius + (6f * scale), 3f * scale, GaugeStartAngle, GaugeSweepAngle, new Color(_config.MaxWeightColor.Value.r, _config.MaxWeightColor.Value.g, _config.MaxWeightColor.Value.b, 0.40f));
+            }
+
+            DrawTick(center, radius, thickness, maxWeight, snapshot.OverweightThreshold, _config.OverweightColor.Value, 11f * scale, 2f * scale);
+            DrawTick(center, radius, thickness, maxWeight, snapshot.CriticalOverweightThreshold, _config.CriticalWeightColor.Value, 13f * scale, 2f * scale);
+            DrawTick(center, radius, thickness, maxWeight, snapshot.MaxWeightThreshold, _config.MaxWeightColor.Value, 16f * scale, 3f * scale);
+
+            if (!minimalHud && _config.ShowGaugeThresholdLabels.Value)
+            {
+                DrawThresholdLabel(center, radius, thickness, maxWeight, snapshot.OverweightThreshold, _config.OverweightColor.Value, scale);
+                DrawThresholdLabel(center, radius, thickness, maxWeight, snapshot.CriticalOverweightThreshold, _config.CriticalWeightColor.Value, scale);
+                DrawThresholdLabel(center, radius, thickness, maxWeight, snapshot.MaxWeightThreshold, _config.MaxWeightColor.Value, scale);
             }
 
             DrawShadowedLabel(new Rect(rect.x, center.y - (23f * scale), rect.width, 32f * scale), snapshot.CurrentWeight.ToString("0.0"), _centerValueStyle, GetCurrentWeightColor(snapshot.State), scale);
@@ -241,9 +274,9 @@ namespace JordiXIII.WeightHUD
         private void DrawBreakdownRows(Rect rect, WeightSnapshot snapshot, float scale)
         {
             var rowHeight = rect.height / 3f;
-            DrawBreakdownRow(new Rect(rect.x, rect.y, rect.width, rowHeight), "Equipment", snapshot.EquipmentWeight, _config.PanelAccentColor.Value, scale);
-            DrawBreakdownRow(new Rect(rect.x, rect.y + rowHeight, rect.width, rowHeight), "Weapons", snapshot.WeaponWeight, snapshot.HasEliteStrength ? _config.SecondaryTextColor.Value : _config.SlowWalkColor.Value, scale);
-            DrawBreakdownRow(new Rect(rect.x, rect.y + (rowHeight * 2f), rect.width, rowHeight), "Backpack", snapshot.BackpackWeight, _config.OverweightColor.Value, scale);
+            DrawBreakdownRow(new Rect(rect.x, rect.y, rect.width, rowHeight), "Equipment", snapshot.EquipmentWeight, _config.EquipmentColor.Value, scale);
+            DrawBreakdownRow(new Rect(rect.x, rect.y + rowHeight, rect.width, rowHeight), "Weapons", snapshot.WeaponWeight, snapshot.HasEliteStrength ? _config.SecondaryTextColor.Value : _config.WeaponsColor.Value, scale);
+            DrawBreakdownRow(new Rect(rect.x, rect.y + (rowHeight * 2f), rect.width, rowHeight), "Backpack", snapshot.BackpackWeight, _config.BackpackColor.Value, scale);
         }
 
         private void DrawBreakdownRow(Rect rowRect, string label, float value, Color accent, float scale)
@@ -263,18 +296,17 @@ namespace JordiXIII.WeightHUD
 
             var angle = ValueToAngle(value, maxValue);
             var direction = AngleToDirection(angle);
-            var offset = radius + thickness + (19f * scale);
+            var offset = radius + thickness + (8f * scale);
             var labelCenter = center + (direction * offset);
-            var labelRect = new Rect(labelCenter.x - (20f * scale), labelCenter.y - (8f * scale), 40f * scale, 16f * scale);
+            var labelRect = new Rect(labelCenter.x - (18f * scale), labelCenter.y - (8f * scale), 36f * scale, 16f * scale);
             DrawShadowedLabel(labelRect, value.ToString("0"), _thresholdLabelStyle, color, scale);
         }
 
-        private void DrawThresholdArc(Vector2 center, float radius, float thickness, float currentWeight, float maxValue, float segmentStart, float segmentEnd, Color color)
+        private void DrawThresholdBand(Vector2 center, float radius, float thickness, float currentWeight, float maxValue, float startValue, float endValue, Color color)
         {
-            var clampedStart = Mathf.Clamp(segmentStart, 0f, maxValue);
-            var clampedEnd = Mathf.Clamp(segmentEnd, 0f, maxValue);
+            var clampedStart = Mathf.Clamp(startValue, 0f, maxValue);
+            var clampedEnd = Mathf.Clamp(endValue, 0f, maxValue);
             var current = Mathf.Clamp(currentWeight, 0f, maxValue);
-
             if (current <= clampedStart)
             {
                 return;
@@ -286,49 +318,80 @@ namespace JordiXIII.WeightHUD
                 return;
             }
 
-            var startAngle = ValueToAngle(clampedStart, maxValue);
-            var endAngle = ValueToAngle(effectiveEnd, maxValue);
-            DrawArc(center, radius, thickness, startAngle, endAngle - startAngle, color);
+            DrawRing(center, radius, thickness, ValueToAngle(clampedStart, maxValue), ValueToAngle(effectiveEnd, maxValue) - ValueToAngle(clampedStart, maxValue), color);
         }
 
-        private void DrawThresholdTick(Vector2 center, float radius, float thickness, float maxValue, float value, Color color, float tickLength, float tickThickness)
+        private void DrawTick(Vector2 center, float radius, float thickness, float maxValue, float value, Color color, float length, float width)
         {
             if (value <= 0f || maxValue <= 0f)
             {
                 return;
             }
 
-            var angle = ValueToAngle(value, maxValue);
-            DrawRadialTick(center, radius, thickness, angle, tickLength, tickThickness, color);
+            var direction = AngleToDirection(ValueToAngle(value, maxValue));
+            var tangent = new Vector2(-direction.y, direction.x);
+            var start = center + (direction * (radius - (thickness * 0.5f) - (1f * width)));
+            var end = center + (direction * (radius + length));
+            DrawQuad(start - (tangent * (width * 0.5f)), start + (tangent * (width * 0.5f)), end + (tangent * (width * 0.5f)), end - (tangent * (width * 0.5f)), color);
         }
 
-        private void DrawArc(Vector2 center, float radius, float thickness, float startAngle, float sweepAngle, Color color)
+        private void DrawRing(Vector2 center, float radius, float thickness, float startAngle, float sweepAngle, Color color)
         {
-            var steps = Mathf.Max(18, Mathf.CeilToInt(Mathf.Abs(sweepAngle) / 4f));
-            var delta = sweepAngle / steps;
-            var segmentLength = Mathf.Max(2f, Mathf.Abs(delta) * Mathf.Deg2Rad * radius * 1.15f);
-
-            for (var index = 0; index <= steps; index++)
+            var absSweep = Mathf.Abs(sweepAngle);
+            if (absSweep <= 0.01f || thickness <= 0.01f)
             {
-                var angle = startAngle + (delta * index);
-                DrawTangentSegment(center, radius, thickness, angle, segmentLength, color);
+                return;
             }
+
+            BeginTriangles();
+
+            var segments = Mathf.Max(48, Mathf.CeilToInt(absSweep / 2.5f));
+            var delta = sweepAngle / segments;
+            var innerRadius = Mathf.Max(0f, radius - thickness);
+            for (var index = 0; index < segments; index++)
+            {
+                var angle0 = startAngle + (delta * index);
+                var angle1 = angle0 + delta;
+                var outer0 = center + (AngleToDirection(angle0) * radius);
+                var outer1 = center + (AngleToDirection(angle1) * radius);
+                var inner0 = center + (AngleToDirection(angle0) * innerRadius);
+                var inner1 = center + (AngleToDirection(angle1) * innerRadius);
+
+                DrawTriangle(outer0, outer1, inner1, color);
+                DrawTriangle(outer0, inner1, inner0, color);
+            }
+
+            EndTriangles();
         }
 
-        private void DrawTangentSegment(Vector2 center, float radius, float thickness, float angle, float length, Color color)
+        private void DrawQuad(Vector2 a, Vector2 b, Vector2 c, Vector2 d, Color color)
         {
-            var previous = GUI.matrix;
-            GUIUtility.RotateAroundPivot(angle, center);
-            DrawRect(new Rect(center.x - (length * 0.5f), center.y - radius - (thickness * 0.5f), length, thickness), color);
-            GUI.matrix = previous;
+            BeginTriangles();
+            DrawTriangle(a, b, c, color);
+            DrawTriangle(a, c, d, color);
+            EndTriangles();
         }
 
-        private void DrawRadialTick(Vector2 center, float radius, float thickness, float angle, float tickLength, float tickThickness, Color color)
+        private void BeginTriangles()
         {
-            var previous = GUI.matrix;
-            GUIUtility.RotateAroundPivot(angle, center);
-            DrawRect(new Rect(center.x - (tickThickness * 0.5f), center.y - radius - (thickness * 0.5f) - (tickLength * 0.1f), tickThickness, tickLength), color);
-            GUI.matrix = previous;
+            _vectorMaterial.SetPass(0);
+            GL.PushMatrix();
+            GL.LoadPixelMatrix(0, Screen.width, Screen.height, 0);
+            GL.Begin(GL.TRIANGLES);
+        }
+
+        private static void DrawTriangle(Vector2 a, Vector2 b, Vector2 c, Color color)
+        {
+            GL.Color(color);
+            GL.Vertex3(a.x, a.y, 0f);
+            GL.Vertex3(b.x, b.y, 0f);
+            GL.Vertex3(c.x, c.y, 0f);
+        }
+
+        private static void EndTriangles()
+        {
+            GL.End();
+            GL.PopMatrix();
         }
 
         private float ValueToAngle(float value, float maxValue)
@@ -349,9 +412,9 @@ namespace JordiXIII.WeightHUD
             {
                 case WeightState.Overweight:
                     return _config.OverweightColor.Value;
-                case WeightState.SlowWalk:
-                    return _config.SlowWalkColor.Value;
-                case WeightState.MaxCarry:
+                case WeightState.CriticallyOverweight:
+                    return _config.CriticalWeightColor.Value;
+                case WeightState.MaxWeight:
                     return _config.MaxWeightColor.Value;
                 default:
                     return _config.SafeWeightColor.Value;

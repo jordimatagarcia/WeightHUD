@@ -25,14 +25,7 @@ namespace JordiXIII.WeightHUD
             {
                 if (Singleton<AbstractGame>.Instance is LocalGame localGame)
                 {
-                    var localPlayer = TryGetLocalPlayer(localGame);
-                    if (localPlayer != null)
-                    {
-                        return BuildContext(localPlayer.Profile, localPlayer, HudContextType.Raid);
-                    }
-
-                    // Never fall back to the menu PMC profile while a raid is active.
-                    return new WeightRuntimeContext();
+                    return ResolveRaidContext(localGame);
                 }
             }
             catch
@@ -47,6 +40,18 @@ namespace JordiXIII.WeightHUD
             }
 
             return new WeightRuntimeContext();
+        }
+
+        private static WeightRuntimeContext ResolveRaidContext(LocalGame localGame)
+        {
+            var activeProfile = TryGetRaidProfile(localGame);
+            if (activeProfile == null)
+            {
+                return new WeightRuntimeContext();
+            }
+
+            var activePlayer = TryGetRaidPlayer(localGame, activeProfile.ProfileId);
+            return BuildContext(activeProfile, activePlayer, HudContextType.Raid);
         }
 
         private static WeightRuntimeContext BuildContext(Profile profile, Player player, HudContextType contextType)
@@ -67,33 +72,13 @@ namespace JordiXIII.WeightHUD
             };
         }
 
-        private static Profile TryGetSessionProfile()
+        private static Profile TryGetRaidProfile(LocalGame localGame)
         {
             try
             {
-                var app = ClientAppUtils.GetMainApp();
-                var session = app?.GetClientBackEndSession();
-                return SessionProfileProperty?.GetValue(session) as Profile;
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        private static Player TryGetLocalPlayer(LocalGame localGame)
-        {
-            if (localGame == null)
-            {
-                return null;
-            }
-
-            try
-            {
-                var directLocalPlayer = localGame.LocalPlayer_0;
-                if (directLocalPlayer != null)
+                if (localGame.Profile_0 != null)
                 {
-                    return directLocalPlayer;
+                    return localGame.Profile_0;
                 }
             }
             catch
@@ -102,10 +87,63 @@ namespace JordiXIII.WeightHUD
 
             try
             {
-                var playerFromOwner = localGame.PlayerOwner?.Player;
-                if (playerFromOwner != null)
+                if (localGame.PlayerOwner?.Player?.Profile != null)
                 {
-                    return playerFromOwner;
+                    return localGame.PlayerOwner.Player.Profile;
+                }
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                var profileId = localGame.ProfileId;
+                return localGame.AllPlayers?
+                    .FirstOrDefault(player => player != null && player.Profile != null && player.Profile.ProfileId == profileId)
+                    ?.Profile;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static Player TryGetRaidPlayer(LocalGame localGame, string profileId)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(profileId))
+                {
+                    var matchedPlayer = localGame.AllPlayers?
+                        .FirstOrDefault(player => player != null && player.Profile != null && player.Profile.ProfileId == profileId);
+                    if (matchedPlayer != null)
+                    {
+                        return matchedPlayer;
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                if (localGame.LocalPlayer_0?.Profile != null && ProfilesMatch(localGame.LocalPlayer_0.Profile, profileId))
+                {
+                    return localGame.LocalPlayer_0;
+                }
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                var ownerPlayer = localGame.PlayerOwner?.Player;
+                if (ownerPlayer?.Profile != null && ProfilesMatch(ownerPlayer.Profile, profileId))
+                {
+                    return ownerPlayer;
                 }
             }
             catch
@@ -116,6 +154,25 @@ namespace JordiXIII.WeightHUD
             {
                 return localGame.AllPlayers?.FirstOrDefault(player => player != null && player.IsYourPlayer) ??
                        localGame.AllPlayers?.FirstOrDefault(player => player != null && !player.IsAI && player.HasGamePlayerOwner);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static bool ProfilesMatch(Profile profile, string profileId)
+        {
+            return profile != null && !string.IsNullOrEmpty(profileId) && profile.ProfileId == profileId;
+        }
+
+        private static Profile TryGetSessionProfile()
+        {
+            try
+            {
+                var app = ClientAppUtils.GetMainApp();
+                var session = app?.GetClientBackEndSession();
+                return SessionProfileProperty?.GetValue(session) as Profile;
             }
             catch
             {

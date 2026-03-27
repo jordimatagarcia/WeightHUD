@@ -7,19 +7,19 @@ namespace JordiXIII.WeightHUD
 {
     internal sealed class WeightThresholdGlobals
     {
-        public static readonly WeightThresholdGlobals Defaults = new WeightThresholdGlobals(26f, 45f, 86f, false);
+        public static readonly WeightThresholdGlobals Defaults = new WeightThresholdGlobals(26f, 77f, 86f, false);
 
-        public WeightThresholdGlobals(float baseOverweightThreshold, float slowWalkThreshold, float maxCarryThreshold, bool loadedFromFile)
+        public WeightThresholdGlobals(float overweightThreshold, float criticalOverweightThreshold, float maxWeightThreshold, bool loadedFromFile)
         {
-            BaseOverweightThreshold = baseOverweightThreshold;
-            SlowWalkThreshold = slowWalkThreshold;
-            MaxCarryThreshold = maxCarryThreshold;
+            OverweightThreshold = overweightThreshold;
+            CriticalOverweightThreshold = criticalOverweightThreshold;
+            MaxWeightThreshold = maxWeightThreshold;
             LoadedFromFile = loadedFromFile;
         }
 
-        public float BaseOverweightThreshold { get; }
-        public float SlowWalkThreshold { get; }
-        public float MaxCarryThreshold { get; }
+        public float OverweightThreshold { get; }
+        public float CriticalOverweightThreshold { get; }
+        public float MaxWeightThreshold { get; }
         public bool LoadedFromFile { get; }
 
         public static WeightThresholdGlobals Load(ManualLogSource logger)
@@ -45,9 +45,9 @@ namespace JordiXIII.WeightHUD
                 }
 
                 return new WeightThresholdGlobals(
-                    baseOverweight.Value<float?>("x") ?? Defaults.BaseOverweightThreshold,
-                    walkOverweight.Value<float?>("x") ?? Defaults.SlowWalkThreshold,
-                    walkOverweight.Value<float?>("y") ?? Defaults.MaxCarryThreshold,
+                    baseOverweight.Value<float?>("x") ?? Defaults.OverweightThreshold,
+                    baseOverweight.Value<float?>("y") ?? Defaults.CriticalOverweightThreshold,
+                    walkOverweight.Value<float?>("y") ?? Defaults.MaxWeightThreshold,
                     true
                 );
             }
