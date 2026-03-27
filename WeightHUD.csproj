@@ -5,7 +5,7 @@
     <RootNamespace>JordiXIII.WeightHUD</RootNamespace>
     <Nullable>disable</Nullable>
     <Authors>JordiXIII</Authors>
-    <AssemblyVersion>0.1.0</AssemblyVersion>
+    <AssemblyVersion>0.1.1</AssemblyVersion>
     <FileVersion>$(AssemblyVersion)</FileVersion>
     <Configurations>Debug;Release</Configurations>
     <Version>$(AssemblyVersion)</Version>

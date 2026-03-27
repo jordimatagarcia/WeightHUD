@@ -1,80 +1,53 @@
 # WeightHUD
 
-> HUD that displays the carry weight
+HUD overlay for Escape from Tarkov / SPT that shows the player carry weight, live carry thresholds, and a category breakdown for equipment, weapons, and backpack.
 
 **Author:** JordiXIII  
-**Version:** 0.1.0  
+**Version:** 0.1.1  
 **SPT Version:** 4.0.13  
 **License:** MIT
 
----
+## Features
 
-## What This Mod Does
+- Circular weight gauge with threshold markers and optional numeric labels on the ring.
+- Compact live weight display with safe / overweight / slow walk / max carry coloring.
+- Weight breakdown for equipment, weapons, and backpack.
+- Configurable breakdown placement: right, bottom, left, or top of the gauge.
+- PMC / SCAV badge, with optional main-menu HUD display.
+- F12-configurable position, scale, refresh rate, shortcut, and colors.
+- Prefers loaded in-game fonts by default.
 
-Describe what your mod does here.
+## Configuration
 
-This template includes BepInEx Configuration examples. All settings are editable in-game via the **F12** config manager or by editing the config file at `BepInEx/config/JordiXIII.WeightHUD.cfg`.
+The config file is created at `BepInEx/config/JordiXIII.WeightHUD.cfg`.
 
-### Included Config Entries
+Main settings:
 
-| Setting | Type | Default | Description |
-|---|---|---|---|
-| Enable Mod | `bool` | `true` | Enables or disables the mod |
-| Example Integer | `int` | `5` | Integer with slider (0–100) |
-| Example Float | `float` | `1.0` | Float with slider (0–10) |
-| Example String | `string` | `Hello SPT` | Simple string setting |
-| Enum Selection | `enum` | `OptionA` | Dropdown selection |
-| Action Key | `KeyboardShortcut` | `F10` | Remappable keybind |
-| Overlay Color | `Color` | `red` | Color picker |
+- `Enable HUD`
+- `Show In Main Menu`
+- `Toggle HUD Shortcut`
+- `Refresh Interval (ms)`
+- `Anchor X`
+- `Anchor Y`
+- `Scale`
+- `Breakdown Placement`
+- `Show Gauge Threshold Labels`
+- threshold and panel colors
+- `Preferred Font Name`
 
----
-
-## Requirements
-
-- [SPT](https://www.sp-tarkov.com/) installed (BepInEx is included)
-- .NET SDK (`netstandard2.1`-compatible) for building from source
-
----
+All settings are editable through the BepInEx Configuration Manager (`F12`) if it is installed.
 
 ## Building
 
-```sh
-cd WeightHUD
+```powershell
 dotnet build -c Release
 ```
 
-The PostBuild target automatically copies the compiled DLL to your SPT installation's `BepInEx\plugins\` folder.
-The project also packages the mod into a distributable `WeightHUD.zip` ready to be uploaded.
-
----
+The project copies the compiled DLL to the configured SPT install after a successful build and also creates `WeightHUD.zip`.
 
 ## Installation
 
-1. Build the project (see above) **or** download the latest release DLL.
-2. Copy `WeightHUD.dll` to `<SPT install>\BepInEx\plugins\`.
-3. Launch SPT as usual.
-4. Press **F12** in-game to open the config manager and adjust settings.
-
----
-
-## Project Structure
-
-```
-WeightHUD/
-├── WeightHUD.csproj   ← project file with DLL references
-├── Plugin.cs              ← BepInEx plugin with config entries
-├── README.md
-└── .gitignore
-```
-
----
-
-## Learning Resources
-
-| Resource | URL |
-|---|---|
-| BepInEx Configuration Docs | https://github.com/BepInEx/BepInEx.ConfigurationManager/blob/master/README.md|
-| SPT Client Mod Examples | https://github.com/Jehree/SPTClientModExamples |
-| SPT Wiki Modding Resources | https://wiki.sp-tarkov.com/modding/Modding_Resources |
-
----
+1. Build the project or download a release.
+2. Copy `WeightHUD.dll` into `<SPT>\BepInEx\plugins\`.
+3. Launch the game.
+4. Adjust the HUD from `F12` if needed.
