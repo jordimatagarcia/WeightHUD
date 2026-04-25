@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace JordiXIII.WeightHUD
 {
-    [BepInPlugin("JordiXIII.WeightHUD", "WeightHUD", "0.1.1")]
+    [BepInPlugin("JordiXIII.WeightHUD", "WeightHUD", "0.1.2")]
     public sealed class Plugin : BaseUnityPlugin
     {
         internal static ManualLogSource LogSource;

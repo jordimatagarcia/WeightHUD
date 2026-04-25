@@ -7,7 +7,7 @@ namespace JordiXIII.WeightHUD
 {
     internal sealed class WeightThresholdGlobals
     {
-        public static readonly WeightThresholdGlobals Defaults = new WeightThresholdGlobals(26f, 77f, 86f, false);
+        public static readonly WeightThresholdGlobals Defaults = new WeightThresholdGlobals(26f, 35f, 70f, false);
 
         public WeightThresholdGlobals(float overweightThreshold, float criticalOverweightThreshold, float maxWeightThreshold, bool loadedFromFile)
         {
@@ -46,8 +46,8 @@ namespace JordiXIII.WeightHUD
 
                 return new WeightThresholdGlobals(
                     baseOverweight.Value<float?>("x") ?? Defaults.OverweightThreshold,
-                    baseOverweight.Value<float?>("y") ?? Defaults.CriticalOverweightThreshold,
-                    walkOverweight.Value<float?>("y") ?? Defaults.MaxWeightThreshold,
+                    walkOverweight.Value<float?>("x") ?? Defaults.CriticalOverweightThreshold,
+                    baseOverweight.Value<float?>("y") ?? Defaults.MaxWeightThreshold,
                     true
                 );
             }

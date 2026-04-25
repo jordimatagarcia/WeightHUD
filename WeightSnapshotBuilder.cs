@@ -1,3 +1,4 @@
+using Comfort.Common;
 using EFT;
 using EFT.InventoryLogic;
 using HarmonyLib;
@@ -15,9 +16,9 @@ namespace JordiXIII.WeightHUD
         private static readonly PropertyInfo FloatWrapperValueProperty = AccessTools.Property(InventoryTotalWeightField.FieldType, "Value");
         private static readonly FieldInfo BoolWrapperValueField = AccessTools.Field(SkillManagerStrengthBuffEliteField.FieldType, "Value");
 
-        private static readonly FieldInfo PlayerPhysicalField = AccessTools.Field(typeof(Player), "Physical");
-        private static readonly PropertyInfo PhysicalBaseOverweightLimitsProperty = AccessTools.Property(PlayerPhysicalField.FieldType, "BaseOverweightLimits");
-        private static readonly PropertyInfo PhysicalWalkOverweightLimitsProperty = AccessTools.Property(PlayerPhysicalField.FieldType, "WalkOverweightLimits");
+        private static readonly FieldInfo BackendConfigSettingsStaminaField = AccessTools.Field(typeof(BackendConfigSettingsClass), "Stamina");
+        private static readonly FieldInfo StaminaWalkOverweightLimitsField = AccessTools.Field(BackendConfigSettingsStaminaField.FieldType, "WalkOverweightLimits");
+        private static readonly FieldInfo StaminaBaseOverweightLimitsField = AccessTools.Field(BackendConfigSettingsStaminaField.FieldType, "BaseOverweightLimits");
 
         private static readonly EquipmentSlot[] WeaponSlots =
         {
@@ -122,50 +123,46 @@ namespace JordiXIII.WeightHUD
 
         private ThresholdSet ResolveThresholds(WeightRuntimeContext context)
         {
-            if (context.Player != null && TryReadLiveThresholds(context.Player, out var liveThresholds))
-            {
-                return liveThresholds;
-            }
+            var backendThresholds = ReadBackendThresholds();
+            var healthRelativeModifier = context.HealthController?.CarryingWeightRelativeModifier ?? 1f;
+            var healthAbsoluteModifier = context.HealthController?.CarryingWeightAbsoluteModifier ?? 0f;
+            var relativeModifier = context.Skills.CarryingWeightRelativeModifier * healthRelativeModifier;
+            var absoluteModifier = Vector2.one * healthAbsoluteModifier;
 
-            var modifier = Mathf.Max(-0.95f, context.Skills.CarryingWeightRelativeModifier);
+            var baseLimits = (backendThresholds.BaseOverweightLimits * relativeModifier) + absoluteModifier;
+            var walkLimits = (backendThresholds.WalkOverweightLimits * relativeModifier) + absoluteModifier;
+
+            var overweight = baseLimits.x > 0f ? baseLimits.x : _globals.OverweightThreshold;
+            var criticalOverweight = walkLimits.x > 0f ? walkLimits.x : _globals.CriticalOverweightThreshold;
+            var maxWeight = baseLimits.y > 0f ? baseLimits.y : _globals.MaxWeightThreshold;
+
             return new ThresholdSet
             {
-                Overweight = _globals.OverweightThreshold * (1f + modifier),
-                CriticalOverweight = _globals.CriticalOverweightThreshold * (1f + modifier),
-                MaxWeight = _globals.MaxWeightThreshold * (1f + modifier)
+                Overweight = overweight,
+                CriticalOverweight = Mathf.Max(criticalOverweight, overweight),
+                MaxWeight = Mathf.Max(maxWeight, criticalOverweight)
             };
         }
 
-        private static bool TryReadLiveThresholds(Player player, out ThresholdSet thresholds)
+        private BackendThresholdSet ReadBackendThresholds()
         {
-            thresholds = default;
-
-            var physical = PlayerPhysicalField?.GetValue(player);
-            if (physical == null)
-            {
-                return false;
-            }
-
             try
             {
-                var baseLimits = (Vector2)(PhysicalBaseOverweightLimitsProperty?.GetValue(physical) ?? Vector2.zero);
-                var walkLimits = (Vector2)(PhysicalWalkOverweightLimitsProperty?.GetValue(physical) ?? Vector2.zero);
-                if (baseLimits.x <= 0f || baseLimits.y <= 0f || walkLimits.y <= 0f)
+                var backendSettings = Singleton<BackendConfigSettingsClass>.Instance;
+                var stamina = BackendConfigSettingsStaminaField?.GetValue(backendSettings);
+                return new BackendThresholdSet
                 {
-                    return false;
-                }
-
-                thresholds = new ThresholdSet
-                {
-                    Overweight = baseLimits.x,
-                    CriticalOverweight = Mathf.Max(baseLimits.y, baseLimits.x),
-                    MaxWeight = Mathf.Max(walkLimits.y, baseLimits.y)
+                    BaseOverweightLimits = stamina != null ? (Vector2)StaminaBaseOverweightLimitsField.GetValue(stamina) : new Vector2(_globals.OverweightThreshold, _globals.MaxWeightThreshold),
+                    WalkOverweightLimits = stamina != null ? (Vector2)StaminaWalkOverweightLimitsField.GetValue(stamina) : new Vector2(_globals.CriticalOverweightThreshold, _globals.MaxWeightThreshold)
                 };
-                return true;
             }
             catch
             {
-                return false;
+                return new BackendThresholdSet
+                {
+                    BaseOverweightLimits = new Vector2(_globals.OverweightThreshold, _globals.MaxWeightThreshold),
+                    WalkOverweightLimits = new Vector2(_globals.CriticalOverweightThreshold, _globals.MaxWeightThreshold)
+                };
             }
         }
 
@@ -201,6 +198,12 @@ namespace JordiXIII.WeightHUD
             public float Overweight;
             public float CriticalOverweight;
             public float MaxWeight;
+        }
+
+        private struct BackendThresholdSet
+        {
+            public Vector2 BaseOverweightLimits;
+            public Vector2 WalkOverweightLimits;
         }
     }
 }

@@ -1,4 +1,5 @@
 using EFT;
+using EFT.HealthSystem;
 
 namespace JordiXIII.WeightHUD
 {
@@ -28,12 +29,25 @@ namespace JordiXIII.WeightHUD
     {
         public Profile Profile { get; set; }
         public Player Player { get; set; }
+        public IHealthController HealthController { get; set; }
         public EFT.InventoryLogic.Inventory Inventory { get; set; }
         public SkillManager Skills { get; set; }
         public HudPlayerRole Role { get; set; }
         public HudContextType ContextType { get; set; }
+        public string GameTypeName { get; set; }
+        public string RaidProfileId { get; set; }
+        public string ResolvedProfileId { get; set; }
+        public string ResolvedPlayerProfileId { get; set; }
+        public string SessionPmcProfileId { get; set; }
+        public string SessionScavProfileId { get; set; }
+        public string ResolutionSource { get; set; }
 
         public bool IsValid => Profile != null && Inventory != null && Skills != null;
+
+        public string DiagnosticSignature => $"{GameTypeName}|{ContextType}|{Role}|{RaidProfileId}|{ResolvedProfileId}|{ResolvedPlayerProfileId}|{ResolutionSource}";
+
+        public string DiagnosticSummary =>
+            $"GameType={GameTypeName ?? "<null>"}, Context={ContextType}, Role={Role}, RaidProfileId={RaidProfileId ?? "<null>"}, ResolvedProfileId={ResolvedProfileId ?? "<null>"}, ResolvedPlayerProfileId={ResolvedPlayerProfileId ?? "<null>"}, SessionPMC={SessionPmcProfileId ?? "<null>"}, SessionSCAV={SessionScavProfileId ?? "<null>"}, Source={ResolutionSource ?? "<unknown>"}";
     }
 
     internal sealed class WeightSnapshot

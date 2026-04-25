@@ -16,6 +16,7 @@ namespace JordiXIII.WeightHUD
         public ConfigEntry<bool> EnableHud { get; private set; }
         public ConfigEntry<bool> ShowInMainMenu { get; private set; }
         public ConfigEntry<bool> MinimalHud { get; private set; }
+        public ConfigEntry<bool> ScavVerificationLogging { get; private set; }
         public ConfigEntry<KeyboardShortcut> ToggleHudShortcut { get; private set; }
         public ConfigEntry<int> RefreshIntervalMs { get; private set; }
 
@@ -62,6 +63,12 @@ namespace JordiXIII.WeightHUD
                     "Minimal HUD",
                     false,
                     "Shows only the circular bar with the current weight in the center."
+                ),
+                ScavVerificationLogging = config.Bind(
+                    "General",
+                    "SCAV Verification Logging",
+                    true,
+                    "Logs the resolved raid profile and player IDs whenever the active weight source changes."
                 ),
                 ToggleHudShortcut = config.Bind(
                     "General",
@@ -162,7 +169,7 @@ namespace JordiXIII.WeightHUD
                 OverweightColor = config.Bind(
                     "Visuals",
                     "Overweight Color",
-                    new Color(0.95f, 0.88f, 0.58f, 1f),
+                    new Color(0.98f, 0.92f, 0.66f, 1f),
                     "Color used for the overweight threshold."
                 ),
                 CriticalWeightColor = config.Bind(
@@ -211,3 +218,4 @@ namespace JordiXIII.WeightHUD
         }
     }
 }
+
